@@ -1,6 +1,5 @@
-bp = Blueprint('routes', __name__)
-from flask import Blueprint, request, jsonify
 
+from flask import Blueprint, request, jsonify
 bp = Blueprint('routes', __name__)
 
 # Story 1: Chat endpoint
