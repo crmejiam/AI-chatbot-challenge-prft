@@ -42,7 +42,6 @@ def verify_jwt(request):
     except jwt.InvalidTokenError:
         return None
 
-
 # Story 1: Chat endpoint (protected, now using GPT-2)
 @bp.route('/chat/', methods=['POST'])
 def chat():
@@ -151,9 +150,6 @@ def register():
     users[user_id] = {'id': user_id, 'email': email, 'password': password}
     return jsonify({'message': 'User registered successfully.', 'id': user_id}), 201
 
-
-
-
 # Story 4: User login
 @bp.route('/users/login', methods=['POST'])
 def login():
@@ -176,8 +172,6 @@ def login():
     token = jwt.encode(payload, secret, algorithm='HS256')
     return jsonify({'message': 'User logged in successfully.', 'token': token, 'id': user['id']}), 200
 
-
-
 # Story 3: Admin user management
 @bp.route('/admin/users', methods=['GET'])
 def list_users():
@@ -196,8 +190,3 @@ def delete_user(user_id):
         return jsonify({'message': f'User {user_id} deleted.'})
     else:
         return jsonify({'error': f'User {user_id} not found.'}), 404
-
-# Story 5: Endpoint testing
-@bp.route('/test/endpoints', methods=['GET'])
-def test_endpoints():
-    return jsonify({'message': 'All endpoints are working.'})

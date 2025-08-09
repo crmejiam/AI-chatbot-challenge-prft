@@ -36,11 +36,9 @@
 **Benefit:** Ensures proper user management and security within the chat app.
 **Acceptance Criteria:**
 - Admins can retrieve a list of all registered users.
-- Admins can remove (delete) users from the system.
 - Actions are logged for audit purposes.
-**Mapped Endpoints:**
+**Mapped Endpoint:**
 - GET /admin/users
-- DELETE /admin/users/{userId}
 
 ---
 
@@ -59,11 +57,11 @@
 ---
 
 ## Story 5
-**Persona:** Developer
-**Story:** As a developer, I want to test the chatbot endpoints so I can ensure reliability before deployment.
-**Statement:** "I need to verify that all chat-related endpoints work as expected."
-**Benefit:** Reduces bugs and improves system stability.
+**Persona:** Admin
+**Story:** As an admin, I want to remove users who should no longer have access so I can manage access to the chat application.
+**Statement:** "I need to be able to delete users who should no longer have access."
+**Benefit:** Ensures proper user management and security within the chat app.
 **Acceptance Criteria:**
-- All endpoints are covered by automated tests.
-- Tests pass for typical and edge cases.
-**Mapped Endpoint:** GET /test/endpoints
+- Admins can remove (delete) users from the system.
+- Actions are logged for audit purposes.
+**Mapped Endpoint:** DELETE /admin/users/{userId}
