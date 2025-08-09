@@ -1,1 +1,7 @@
 Flask>=2.0.0
+transformers
+torch
+python-dotenv
+PyJWT
+sentencepiece
+accelerate

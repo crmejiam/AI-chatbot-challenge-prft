@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>AI Chatbot App</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body class="bg-light">
 <div class="container py-5">
@@ -30,6 +31,11 @@
             <button type="submit" class="btn btn-info">Send</button>
         </form>
         <div id="chat-response" class="alert alert-secondary"></div>
+        <div id="loading-spinner" style="display:none;">
+            <div class="spinner-border text-info" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
         <button id="logout-btn" class="btn btn-outline-danger mt-3">Logout</button>
     </div>
 </div>
@@ -78,16 +84,31 @@ const chatForm = document.getElementById('chat-form');
 chatForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const message = document.getElementById('chat-message').value;
-    const res = await fetch('/chat/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + jwtToken
-        },
-        body: JSON.stringify({ message })
-    });
-    const data = await res.json();
-    document.getElementById('chat-response').textContent = data.response || data.error;
+    // Show loading spinner and update tab title
+    document.getElementById('loading-spinner').style.display = 'block';
+    document.title = 'Loading... | AI Chatbot App';
+    document.getElementById('chat-response').textContent = '';
+    try {
+        const res = await fetch('/chat/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + jwtToken
+            },
+            body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        if (data.response_type === "markdown") {
+            document.getElementById('chat-response').innerHTML = marked.parse(data.response);
+        } else {
+            document.getElementById('chat-response').textContent = data.response || data.error;
+        }
+    } catch (err) {
+        document.getElementById('chat-response').textContent = 'Error loading response.';
+    } finally {
+        document.getElementById('loading-spinner').style.display = 'none';
+        document.title = 'AI Chatbot App';
+    }
 });
 
 // Logout

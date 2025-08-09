@@ -1,26 +1,22 @@
-
-
-
 from flask import Blueprint, request, jsonify, render_template
 import jwt
 import datetime
 import os
 from dotenv import load_dotenv
-# Hugging Face Transformers for GPT-2
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
-import torch
 
+# Hugging Face Transformers for Phi-2
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 
 load_dotenv()
 
-
-
 bp = Blueprint('routes', __name__)
 
-# Load GPT-2 model and tokenizer once at startup
-gpt2_tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-gpt2_model = GPT2LMHeadModel.from_pretrained('gpt2')
-gpt2_model.eval()
+# Load Phi-2 model and tokenizer once at startup
+phi2_model_name = "microsoft/phi-2"
+phi2_tokenizer = AutoTokenizer.from_pretrained(phi2_model_name)
+phi2_model = AutoModelForCausalLM.from_pretrained(phi2_model_name)
+phi2_model.eval()
 
 # Frontend route
 @bp.route('/')
@@ -56,39 +52,67 @@ def chat():
     if not user_message:
         return jsonify({'error': 'Message is required.'}), 400
 
-    # Compose prompt with polite system message
-    system_prompt = "You are a highly polite, customer-focused assistant. Always greet users warmly, answer with respect, and maintain a professional tone. Your main goal is to deliver excellent customer experience and provide accurate, specific information about GitHub Actions.\nUser: "
-    prompt = system_prompt + user_message + "\nAssistant:"
+    # Compose prompt for Phi-2
+    system_prompt = "You are a polite, customer-focused assistant who provides accurate information about GitHub Actions."
+    instructions = (
+        "Always greet users warmly, answer with respect, and maintain a professional tone. "
+        "Your main goal is to deliver excellent customer experience and provide accurate, specific information about GitHub Actions. "
+        "Respond concisely and directly to the user's input without adding unnecessary context."
+    )
+    # Prepend instructions to user message
+    full_user_message = f"{instructions}\n{user_message}"
+    prompt = f"{system_prompt}\nUser: {full_user_message}\nAssistant:"
 
     try:
-        # Encode input and check context length
-        input_ids = gpt2_tokenizer.encode(prompt, return_tensors='pt')
-        if input_ids.shape[1] > 1024:
+        # Encode input and check context length (Phi-2 max is 2048 tokens)
+        input_ids = phi2_tokenizer.encode(prompt, return_tensors='pt')
+        attention_mask = torch.ones_like(input_ids)
+        if input_ids.shape[1] > 2048:
             return jsonify({'error': 'Your message is too long for the model. Please shorten your input.'}), 400
+
+        # Generate response
         with torch.no_grad():
-            output_ids = gpt2_model.generate(
+            output_ids = phi2_model.generate(
                 input_ids,
-                max_length=min(input_ids.shape[1] + 300, 1024),
-                pad_token_id=gpt2_tokenizer.eos_token_id,
+                attention_mask=attention_mask,
+                max_new_tokens=400,
+                pad_token_id=phi2_tokenizer.eos_token_id,
                 do_sample=True,
-                top_p=0.95,
-                top_k=50
+                top_p=0.9,  # Slightly stricter nucleus sampling
+                top_k=20,   # Lower for faster sampling
+                temperature=0.1
             )
-        output_text = gpt2_tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        # Extract assistant's reply
-        reply = output_text.split("Assistant:")[-1].strip()
-        return jsonify({'response': reply})
+
+        # Decode and extract assistant's reply
+        output_text = phi2_tokenizer.decode(output_ids[0], skip_special_tokens=True)
+
+        # Extract only the first assistant reply, stopping before any additional 'User:' or 'Assistant:' turns
+        if "Assistant:" in output_text:
+            reply = output_text.split("Assistant:", 1)[-1]
+            for marker in ["User:", "Assistant:"]:
+                if marker in reply:
+                    reply = reply.split(marker, 1)[0]
+            reply = reply.strip()
+        else:
+            reply = output_text.strip()
+
+        # Always return as markdown for frontend rendering
+        response_type = "markdown"
+        # Ensure code block is wrapped in triple backticks if code detected
+        if '```' in reply and not reply.strip().startswith('```'):
+            reply = f"```\n{reply.strip()}\n```"
+
+        return jsonify({'response': reply, 'response_type': response_type})
+
     except RuntimeError as e:
-        # Handle CUDA out of memory or CPU overload
         if 'out of memory' in str(e).lower():
             return jsonify({'error': 'Server is overloaded. Please try again later.'}), 503
         return jsonify({'error': f'Runtime error: {str(e)}'}), 500
     except torch.cuda.CudaError as e:
         return jsonify({'error': 'GPU error. Please try again later.'}), 503
     except Exception as e:
-        # Simulate rate limit error for excessive requests (basic example)
         if 'rate limit' in str(e).lower():
-            return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
+            return jsonify({'error': 'API rate limit exceeded. Please wait and try again later.'}), 429
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
