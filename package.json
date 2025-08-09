@@ -2,6 +2,6 @@
   "name": "ai-chatbot-challenge-prft",
   "version": "1.0.0",
   "scripts": {
-    "test": "pytest"
+    "test": "python -m pytest --maxfail=1 --disable-warnings"
   }
 }

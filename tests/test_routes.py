@@ -38,8 +38,9 @@ def test_register_missing_fields(client):
     assert 'error' in data
 
 # Login flow
-@patch('app.routes.users', {'user@site.com': 'pass'})
 def test_login(client):
+    # Register user first
+    client.post('/users/register', json={'email': 'user@site.com', 'password': 'pass'})
     response = client.post('/users/login', json={'email': 'user@site.com', 'password': 'pass'})
     assert response.status_code == 200
     data = response.get_json()
@@ -54,7 +55,7 @@ def test_login_invalid(client):
     assert 'error' in data
 
 # Retrieval logic
-@patch('app.kb_retriever.retrieve_relevant_entries', return_value=[{'question': 'Q1', 'answer': 'A1'}])
+@patch('app.routes.retrieve_relevant_entries', return_value=[{'question': 'Q1', 'answer': 'A1'}])
 def test_kb_retrieval(mock_retrieve):
     results = routes.retrieve_relevant_entries('dummy')
     assert results == [{'question': 'Q1', 'answer': 'A1'}]
@@ -90,12 +91,14 @@ def test_delete_nonexistent_user(client):
 
 # Test /chat/ (JWT required, positive)
 def test_chat_with_jwt(client):
+    import torch
     # Register and login to get token
     reg = client.post('/users/register', json={'email': 'chat@site.com', 'password': 'pass'})
     login = client.post('/users/login', json={'email': 'chat@site.com', 'password': 'pass'})
     token = login.get_json()['token']
     # Patch model to avoid heavy inference
-    with patch('app.routes.phi2_model.generate', return_value=None), \
+    dummy_tensor = torch.tensor([[0]])
+    with patch('app.routes.phi2_model.generate', return_value=dummy_tensor), \
          patch('app.routes.phi2_tokenizer.decode', return_value='Hello!'):
         response = client.post('/chat/', json={'message': 'Hi'}, headers={'Authorization': f'Bearer {token}'})
         assert response.status_code == 200
