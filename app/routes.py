@@ -131,8 +131,9 @@ def chat():
             return jsonify({'error': 'API rate limit exceeded. Please wait and try again later.'}), 429
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
-
 # Simple in-memory user store
+# users: {user_id: {id, email, password}}
+import uuid
 users = {}
 
 # Story 2: User registration
@@ -143,10 +144,13 @@ def register():
     password = data.get('password')
     if not email or not password:
         return jsonify({'error': 'Email and password are required.'}), 400
-    if email in users:
+    # Check for duplicate email
+    if any(u['email'] == email for u in users.values()):
         return jsonify({'error': 'User already exists.'}), 409
-    users[email] = password
-    return jsonify({'message': 'User registered successfully.'}), 201
+    user_id = str(uuid.uuid4())
+    users[user_id] = {'id': user_id, 'email': email, 'password': password}
+    return jsonify({'message': 'User registered successfully.', 'id': user_id}), 201
+
 
 
 
@@ -158,26 +162,40 @@ def login():
     password = data.get('password')
     if not email or not password:
         return jsonify({'error': 'Email and password are required.'}), 400
-    if email not in users or users[email] != password:
+    user = next((u for u in users.values() if u['email'] == email and u['password'] == password), None)
+    if not user:
         return jsonify({'error': 'Invalid email or password.'}), 401
 
     # Issue JWT
     secret = 'your-secret-key'  # Replace with a secure key in production
     payload = {
         'email': email,
+        'id': user['id'],
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
     }
     token = jwt.encode(payload, secret, algorithm='HS256')
-    return jsonify({'message': 'User logged in successfully.', 'token': token}), 200
+    return jsonify({'message': 'User logged in successfully.', 'token': token, 'id': user['id']}), 200
+
+
 
 # Story 3: Admin user management
 @bp.route('/admin/users', methods=['GET'])
 def list_users():
-    return jsonify({'users': []})
+    # Return all registered users (id and email)
+    user_list = [{'id': u['id'], 'email': u['email']} for u in users.values()]
+    # In a real app, log this action for audit
+    return jsonify({'users': user_list})
 
+# Story 5: Admin delete user
 @bp.route('/admin/users/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
-    return jsonify({'message': f'User {user_id} deleted.'})
+    # Remove user if exists
+    if user_id in users:
+        del users[user_id]
+        # In a real app, log this action for audit
+        return jsonify({'message': f'User {user_id} deleted.'})
+    else:
+        return jsonify({'error': f'User {user_id} not found.'}), 404
 
 # Story 5: Endpoint testing
 @bp.route('/test/endpoints', methods=['GET'])
