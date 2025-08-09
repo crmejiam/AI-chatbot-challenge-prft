@@ -21,7 +21,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Run tests
-        run: pytest --maxfail=1 --disable-warnings
+        run: PYTHONPATH=. pytest --maxfail=1 --disable-warnings
 
   build-and-push:
     runs-on: ubuntu-latest
