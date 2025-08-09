@@ -1,7 +1,10 @@
 from flask import Blueprint, request, jsonify, render_template
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+from kb_retriever import retrieve_relevant_entries
 import jwt
 import datetime
-import os
 from dotenv import load_dotenv
 
 # Hugging Face Transformers for Phi-2
@@ -52,15 +55,21 @@ def chat():
     if not user_message:
         return jsonify({'error': 'Message is required.'}), 400
 
-    # Compose prompt for Phi-2
+    # Retrieve relevant KB entries for RAG
+    kb_entries = retrieve_relevant_entries(user_message, top_n=3)
+    kb_context = "\n".join([
+        f"Q: {entry['question']}\nA: {entry['answer']}" for entry in kb_entries
+    ]) if kb_entries else ""
+
+    # Compose prompt for Phi-2 with KB context
     system_prompt = "You are a polite, customer-focused assistant who provides accurate information about GitHub Actions."
     instructions = (
         "Always greet users warmly, answer with respect, and maintain a professional tone. "
         "Your main goal is to deliver excellent customer experience and provide accurate, specific information about GitHub Actions. "
         "Respond concisely and directly to the user's input without adding unnecessary context."
     )
-    # Prepend instructions to user message
-    full_user_message = f"{instructions}\n{user_message}"
+    # Prepend KB context and instructions to user message
+    full_user_message = f"{kb_context}\n{instructions}\n{user_message}"
     prompt = f"{system_prompt}\nUser: {full_user_message}\nAssistant:"
 
     try:
@@ -102,7 +111,14 @@ def chat():
         if '```' in reply and not reply.strip().startswith('```'):
             reply = f"```\n{reply.strip()}\n```"
 
-        return jsonify({'response': reply, 'response_type': response_type})
+        # Optionally, include the top KB answers in the response for transparency
+        kb_answers_md = ""
+        if kb_entries:
+            kb_answers_md = "\n\n**Relevant Knowledge Base Answers:**\n" + "\n".join([
+                f"- **Q:** {entry['question']}\n  **A:** {entry['answer']}" for entry in kb_entries
+            ])
+        reply_with_kb = reply + kb_answers_md
+        return jsonify({'response': reply_with_kb, 'response_type': response_type})
 
     except RuntimeError as e:
         if 'out of memory' in str(e).lower():

@@ -1,0 +1,42 @@
+# GitHub Actions FAQ and Product Documentation Knowledge Base
+faqs:
+  - question: What is GitHub Actions?
+    answer: GitHub Actions is a CI/CD and automation platform that allows you to automate workflows for building, testing, and deploying code directly from your GitHub repository.
+  - question: How do I create a workflow in GitHub Actions?
+    answer: Create a YAML file in the .github/workflows directory of your repository. Define the workflow's triggers, jobs, and steps in this file.
+  - question: What triggers can I use for workflows?
+    answer: Common triggers include push, pull_request, schedule (cron), workflow_dispatch (manual), and release events.
+  - question: What are jobs in a workflow?
+    answer: Jobs are sets of steps that run in a virtual environment. Each job can run independently or depend on other jobs.
+  - question: How do I use secrets in GitHub Actions?
+    answer: "Add secrets in your repository settings under Settings > Secrets and variables > Actions. Reference them in your workflow using ${{ secrets.SECRET_NAME }}."
+  - question: Can I use matrix builds?
+    answer: Yes, matrix builds allow you to run jobs with different combinations of parameters, such as operating systems or language versions.
+  - question: How do I cache dependencies?
+    answer: "Use the actions/cache action to cache dependencies and speed up workflow runs."
+  - question: How do I use reusable workflows?
+    answer: "You can call reusable workflows using the workflow_call trigger and reference them from other workflows in your repository or organization."
+  - question: What runners are available?
+    answer: "GitHub provides hosted runners for Linux, Windows, and macOS. You can also use self-hosted runners for custom environments."
+  - question: How do I debug workflow failures?
+    answer: "Review the logs for each step in the Actions tab. You can add debug logging with the ACTIONS_STEP_DEBUG secret or use echo statements in your steps."
+  - question: How do I set environment variables?
+    answer: "Use the env key in your workflow or set them in individual steps using the env property."
+  - question: How do I use third-party actions?
+    answer: "Reference third-party actions from the GitHub Marketplace in your workflow using the uses key, e.g., uses: actions/checkout@v3."
+  - question: How do I restrict workflow permissions?
+    answer: "Use the permissions key in your workflow to specify the minimum required permissions for jobs and steps."
+  - question: How do I manually trigger a workflow?
+    answer: "Use the workflow_dispatch event to enable manual triggers from the Actions tab."
+  - question: How do I pass data between jobs?
+    answer: "Use outputs and the needs keyword to pass data between jobs in a workflow."
+  - question: How do I use artifacts?
+    answer: "Use the actions/upload-artifact and actions/download-artifact actions to share files between jobs or store build outputs."
+  - question: How do I limit workflow concurrency?
+    answer: "Use the concurrency key in your workflow to limit the number of concurrent runs and cancel in-progress runs if needed."
+  - question: How do I use conditional steps?
+    answer: "Use the if key in steps to run them only when certain conditions are met, e.g., if: github.event_name == 'push'."
+  - question: How do I access context variables?
+    answer: "GitHub provides context objects like github, env, and job that you can use to access event data, environment variables, and job information."
+  - question: Where can I find more documentation?
+    answer: "Visit https://docs.github.com/en/actions for the official GitHub Actions documentation."
