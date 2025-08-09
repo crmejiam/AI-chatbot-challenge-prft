@@ -65,11 +65,14 @@ def test_list_users(client):
     # Register two users
     client.post('/users/register', json={'email': 'a@site.com', 'password': 'pass'})
     client.post('/users/register', json={'email': 'b@site.com', 'password': 'pass'})
-    response = client.get('/admin/users')
+    # Login as admin
+    login = client.post('/users/login', json={'email': 'admin@site.com', 'password': 'adminpass'})
+    token = login.get_json()['token']
+    response = client.get('/admin/users', headers={'Authorization': f'Bearer {token}'})
     assert response.status_code == 200
     data = response.get_json()
     assert 'users' in data
-    assert len(data['users']) >= 2
+    assert len(data['users']) >= 3  # admin + 2 users
 
 # Test /admin/users/<user_id> (delete user)
 def test_delete_user(client):
