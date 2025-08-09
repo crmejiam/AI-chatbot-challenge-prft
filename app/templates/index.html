@@ -37,10 +37,22 @@
             </div>
         </div>
         <button id="logout-btn" class="btn btn-outline-danger mt-3">Logout</button>
+        <!-- Admin Actions -->
+        <div id="admin-section" style="display:none;" class="mt-5">
+            <h3>Admin Actions</h3>
+            <button id="list-users-btn" class="btn btn-warning mb-2">List Users</button>
+            <div id="user-list"></div>
+            <form id="delete-user-form" class="mt-3">
+                <input type="text" class="form-control mb-2" id="delete-user-id" placeholder="User ID to delete">
+                <button type="submit" class="btn btn-danger">Delete User</button>
+            </form>
+            <div id="admin-message" class="text-danger mt-2"></div>
+        </div>
     </div>
 </div>
 <script>
 let jwtToken = null;
+let userType = null;
 
 // Register
 const registerForm = document.getElementById('register-form');
@@ -71,9 +83,16 @@ loginForm.addEventListener('submit', async (e) => {
     const data = await res.json();
     if (data.token) {
         jwtToken = data.token;
+        userType = data.type;
         document.getElementById('auth-section').style.display = 'none';
         document.getElementById('chat-section').style.display = 'block';
         document.getElementById('auth-message').textContent = '';
+        // Show admin section if user is admin
+        if (userType === 'admin') {
+            document.getElementById('admin-section').style.display = 'block';
+        } else {
+            document.getElementById('admin-section').style.display = 'none';
+        }
     } else {
         document.getElementById('auth-message').textContent = data.error || data.message;
     }
@@ -112,13 +131,61 @@ chatForm.addEventListener('submit', async (e) => {
 });
 
 // Logout
+
 const logoutBtn = document.getElementById('logout-btn');
 logoutBtn.addEventListener('click', () => {
     jwtToken = null;
+    userType = null;
     document.getElementById('auth-section').style.display = 'block';
     document.getElementById('chat-section').style.display = 'none';
+    document.getElementById('admin-section').style.display = 'none';
     document.getElementById('auth-message').textContent = '';
     document.getElementById('chat-response').textContent = '';
+    document.getElementById('user-list').textContent = '';
+    document.getElementById('admin-message').textContent = '';
+});
+
+// Admin: List Users
+const listUsersBtn = document.getElementById('list-users-btn');
+listUsersBtn.addEventListener('click', async () => {
+    if (!jwtToken) return;
+    const res = await fetch('/admin/users', {
+        method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + jwtToken }
+    });
+    const data = await res.json();
+    if (data.users) {
+        let html = '<ul class="list-group">';
+        for (const user of data.users) {
+            html += `<li class="list-group-item">ID: <b>${user.id}</b> | Email: <b>${user.email}</b></li>`;
+        }
+        html += '</ul>';
+        document.getElementById('user-list').innerHTML = html;
+        document.getElementById('admin-message').textContent = '';
+    } else {
+        document.getElementById('user-list').textContent = '';
+        document.getElementById('admin-message').textContent = data.error || 'Error listing users.';
+    }
+});
+
+// Admin: Delete User
+const deleteUserForm = document.getElementById('delete-user-form');
+deleteUserForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!jwtToken) return;
+    const userId = document.getElementById('delete-user-id').value;
+    if (!userId) return;
+    const res = await fetch(`/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + jwtToken }
+    });
+    const data = await res.json();
+    if (data.message) {
+        document.getElementById('admin-message').textContent = data.message;
+        document.getElementById('user-list').textContent = '';
+    } else {
+        document.getElementById('admin-message').textContent = data.error || 'Error deleting user.';
+    }
 });
 </script>
 </body>

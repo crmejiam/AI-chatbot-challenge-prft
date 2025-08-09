@@ -130,10 +130,23 @@ def chat():
             return jsonify({'error': 'API rate limit exceeded. Please wait and try again later.'}), 429
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
+
 # Simple in-memory user store
-# users: {user_id: {id, email, password}}
+# users: {user_id: {id, email, password, type}}
 import uuid
-users = {}
+
+# Static admin user (always exists)
+ADMIN_EMAIL = "admin@site.com"
+ADMIN_PASSWORD = "adminpass"
+ADMIN_ID = "admin-0000"
+users = {
+    ADMIN_ID: {
+        "id": ADMIN_ID,
+        "email": ADMIN_EMAIL,
+        "password": ADMIN_PASSWORD,
+        "type": "admin"
+    }
+}
 
 # Story 2: User registration
 @bp.route('/users/register', methods=['POST'])
@@ -143,11 +156,11 @@ def register():
     password = data.get('password')
     if not email or not password:
         return jsonify({'error': 'Email and password are required.'}), 400
-    # Check for duplicate email
+    # Prevent duplicate email (including admin)
     if any(u['email'] == email for u in users.values()):
         return jsonify({'error': 'User already exists.'}), 409
     user_id = str(uuid.uuid4())
-    users[user_id] = {'id': user_id, 'email': email, 'password': password}
+    users[user_id] = {'id': user_id, 'email': email, 'password': password, 'type': 'standard'}
     return jsonify({'message': 'User registered successfully.', 'id': user_id}), 201
 
 # Story 4: User login
@@ -162,19 +175,26 @@ def login():
     if not user:
         return jsonify({'error': 'Invalid email or password.'}), 401
 
+    # Determine user type
+    user_type = user.get('type', 'standard')
+
     # Issue JWT
     secret = 'your-secret-key'  # Replace with a secure key in production
     payload = {
         'email': email,
         'id': user['id'],
+        'type': user_type,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
     }
     token = jwt.encode(payload, secret, algorithm='HS256')
-    return jsonify({'message': 'User logged in successfully.', 'token': token, 'id': user['id']}), 200
+    return jsonify({'message': 'User logged in successfully.', 'token': token, 'id': user['id'], 'type': user_type}), 200
 
 # Story 3: Admin user management
 @bp.route('/admin/users', methods=['GET'])
 def list_users():
+    payload = verify_jwt(request)
+    if not payload or payload.get('type') != 'admin':
+        return jsonify({'error': 'Admin privileges required.'}), 403
     # Return all registered users (id and email)
     user_list = [{'id': u['id'], 'email': u['email']} for u in users.values()]
     # In a real app, log this action for audit
@@ -183,6 +203,12 @@ def list_users():
 # Story 5: Admin delete user
 @bp.route('/admin/users/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
+    payload = verify_jwt(request)
+    if not payload or payload.get('type') != 'admin':
+        return jsonify({'error': 'Admin privileges required.'}), 403
+    # Prevent admin from deleting itself
+    if user_id == ADMIN_ID:
+        return jsonify({'error': 'Admin user cannot be deleted.'}), 403
     # Remove user if exists
     if user_id in users:
         del users[user_id]
