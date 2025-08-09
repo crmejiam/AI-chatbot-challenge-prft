@@ -4,14 +4,23 @@
 from flask import Blueprint, request, jsonify, render_template
 import jwt
 import datetime
-import openai
 import os
 from dotenv import load_dotenv
+# Hugging Face Transformers for GPT-2
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+import torch
+
 
 load_dotenv()
 
 
+
 bp = Blueprint('routes', __name__)
+
+# Load GPT-2 model and tokenizer once at startup
+gpt2_tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+gpt2_model = GPT2LMHeadModel.from_pretrained('gpt2')
+gpt2_model.eval()
 
 # Frontend route
 @bp.route('/')
@@ -34,9 +43,9 @@ def verify_jwt(request):
     except jwt.InvalidTokenError:
         return None
 
-# Story 1: Chat endpoint (protected)
-@bp.route('/chat/', methods=['POST'])
 
+# Story 1: Chat endpoint (protected, now using GPT-2)
+@bp.route('/chat/', methods=['POST'])
 def chat():
     payload = verify_jwt(request)
     if not payload:
@@ -47,31 +56,39 @@ def chat():
     if not user_message:
         return jsonify({'error': 'Message is required.'}), 400
 
-    # Get OpenAI API key from environment variable
-    openai_api_key = os.getenv('OPENAI_API_KEY')
-    if not openai_api_key:
-        return jsonify({'error': 'OpenAI API key not configured.'}), 500
-    openai.api_key = openai_api_key
+    # Compose prompt with polite system message
+    system_prompt = "You are a highly polite, customer-focused assistant. Always greet users warmly, answer with respect, and maintain a professional tone. Your main goal is to deliver excellent customer experience and provide accurate, specific information about GitHub Actions.\nUser: "
+    prompt = system_prompt + user_message + "\nAssistant:"
 
     try:
-        response = openai.ChatCompletion.create(
-            model='gpt-3.5-turbo',  # Change to 'gpt-4' if you have access
-            messages=[
-                {"role": "system", "content": "You are a highly polite, customer-focused assistant. Always greet users warmly, answer with respect, and maintain a professional tone. Your main goal is to deliver excellent customer experience and provide accurate, specific information about GitHub Actions."},
-                {"role": "user", "content": user_message}
-            ]
-        )
-        reply = response.choices[0].message['content']
+        # Encode input and check context length
+        input_ids = gpt2_tokenizer.encode(prompt, return_tensors='pt')
+        if input_ids.shape[1] > 1024:
+            return jsonify({'error': 'Your message is too long for the model. Please shorten your input.'}), 400
+        with torch.no_grad():
+            output_ids = gpt2_model.generate(
+                input_ids,
+                max_length=min(input_ids.shape[1] + 300, 1024),
+                pad_token_id=gpt2_tokenizer.eos_token_id,
+                do_sample=True,
+                top_p=0.95,
+                top_k=50
+            )
+        output_text = gpt2_tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        # Extract assistant's reply
+        reply = output_text.split("Assistant:")[-1].strip()
         return jsonify({'response': reply})
-    except openai.error.RateLimitError:
-        return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
-    except openai.error.AuthenticationError:
-        return jsonify({'error': 'Invalid OpenAI API key.'}), 401
-    except openai.error.APIError as e:
-        return jsonify({'error': f'OpenAI API error: {str(e)}'}), 502
-    except openai.error.Timeout:
-        return jsonify({'error': 'OpenAI API request timed out. Please try again.'}), 504
+    except RuntimeError as e:
+        # Handle CUDA out of memory or CPU overload
+        if 'out of memory' in str(e).lower():
+            return jsonify({'error': 'Server is overloaded. Please try again later.'}), 503
+        return jsonify({'error': f'Runtime error: {str(e)}'}), 500
+    except torch.cuda.CudaError as e:
+        return jsonify({'error': 'GPU error. Please try again later.'}), 503
     except Exception as e:
+        # Simulate rate limit error for excessive requests (basic example)
+        if 'rate limit' in str(e).lower():
+            return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
