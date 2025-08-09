@@ -5,3 +5,5 @@ python-dotenv
 PyJWT
 sentencepiece
 accelerate
+pyyaml
+# difflib is part of the Python standard library, no need to add
