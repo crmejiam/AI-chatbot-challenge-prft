@@ -8,7 +8,6 @@ Key features:
 - Dedicated to providing clear, concise, and relevant answers
 - Focused on client satisfaction and support
 
-
 The goal of this project is to create a reliable and effective chatbot that enhances client engagement and delivers high-quality assistance regarding GitHub Actions.
 
 ---
@@ -17,22 +16,45 @@ The goal of this project is to create a reliable and effective chatbot that enha
 
 This repository includes a Python/Flask web service that powers the chat application. The service exposes RESTful endpoints for chat interactions, user registration, login, and admin user management.
 
-### Setup Instructions
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Run the web service:
-   ```bash
-   python run.py
-   ```
+# Running Locally with Python Virtual Environment
+
+To run this project on any PC after cloning the repository:
+
+1. Clone the repository
+    ```sh
+    git clone https://github.com/crmejiam/AI-chatbot-challenge-prft.git
+    cd AI-chatbot-challenge-prft
+    ```
+
+2. Create and activate a Python virtual environment
+    ```sh
+    python -m venv venv
+    # On Windows:
+    venv\Scripts\activate
+    # On macOS/Linux:
+    source venv/bin/activate
+    ```
+
+3. Install dependencies
+    ```sh
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    ```
+
+4. Run the Flask app
+    ```sh
+    python -m flask --app app.routes run
+    ```
+
+5. Access the app
+    Open your browser and go to: http://localhost:5000
 
 ### Main Endpoints
-- `POST /chat/` — Interact with the chatbot
-- `POST /users/register` — Register a new user
-- `POST /users/login` — Log in as a user
-- `GET /admin/users` — List all users (admin)
-- `DELETE /admin/users/{userId}` — Remove a user (admin)
+- `POST /chat/` — Ask questions about GitHub Actions and get actionable, accurate information from the chatbot.
+- `POST /users/register` — Register a new account with email and password for personalized chat experience.
+- `POST /users/login` — Log in securely to access chat features and history.
+- `GET /admin/users` — Admin: View a list of all registered users for management and audit.
+- `DELETE /admin/users/{userId}` — Admin: Remove (delete) users who should no longer have access.
 
 ---
 
