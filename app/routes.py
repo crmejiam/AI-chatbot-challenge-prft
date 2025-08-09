@@ -1,13 +1,22 @@
 
 
-from flask import Blueprint, request, jsonify
 
+from flask import Blueprint, request, jsonify, render_template
 import jwt
 import datetime
 import openai
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 bp = Blueprint('routes', __name__)
+
+# Frontend route
+@bp.route('/')
+def index():
+    return render_template('index.html')
 
 
 # Helper function to verify JWT

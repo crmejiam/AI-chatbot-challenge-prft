@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Chatbot App</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<div class="container py-5">
+    <h1 class="mb-4">AI Chatbot App</h1>
+    <div id="auth-section">
+        <h3>Register</h3>
+        <form id="register-form" class="mb-3">
+            <input type="email" class="form-control mb-2" id="register-email" placeholder="Email" required>
+            <input type="password" class="form-control mb-2" id="register-password" placeholder="Password" required>
+            <button type="submit" class="btn btn-primary">Register</button>
+        </form>
+        <h3>Login</h3>
+        <form id="login-form" class="mb-3">
+            <input type="email" class="form-control mb-2" id="login-email" placeholder="Email" required>
+            <input type="password" class="form-control mb-2" id="login-password" placeholder="Password" required>
+            <button type="submit" class="btn btn-success">Login</button>
+        </form>
+        <div id="auth-message" class="text-danger mb-3"></div>
+    </div>
+    <div id="chat-section" style="display:none;">
+        <h3>Chat with the AI</h3>
+        <form id="chat-form" class="mb-3">
+            <input type="text" class="form-control mb-2" id="chat-message" placeholder="Type your message..." required>
+            <button type="submit" class="btn btn-info">Send</button>
+        </form>
+        <div id="chat-response" class="alert alert-secondary"></div>
+        <button id="logout-btn" class="btn btn-outline-danger mt-3">Logout</button>
+    </div>
+</div>
+<script>
+let jwtToken = null;
+
+// Register
+const registerForm = document.getElementById('register-form');
+registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const res = await fetch('/users/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    document.getElementById('auth-message').textContent = data.message || data.error;
+});
+
+// Login
+const loginForm = document.getElementById('login-form');
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const res = await fetch('/users/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (data.token) {
+        jwtToken = data.token;
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('chat-section').style.display = 'block';
+        document.getElementById('auth-message').textContent = '';
+    } else {
+        document.getElementById('auth-message').textContent = data.error || data.message;
+    }
+});
+
+// Chat
+const chatForm = document.getElementById('chat-form');
+chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = document.getElementById('chat-message').value;
+    const res = await fetch('/chat/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + jwtToken
+        },
+        body: JSON.stringify({ message })
+    });
+    const data = await res.json();
+    document.getElementById('chat-response').textContent = data.response || data.error;
+});
+
+// Logout
+const logoutBtn = document.getElementById('logout-btn');
+logoutBtn.addEventListener('click', () => {
+    jwtToken = null;
+    document.getElementById('auth-section').style.display = 'block';
+    document.getElementById('chat-section').style.display = 'none';
+    document.getElementById('auth-message').textContent = '';
+    document.getElementById('chat-response').textContent = '';
+});
+</script>
+</body>
+</html>
