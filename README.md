@@ -41,9 +41,10 @@ To run this project on any PC after cloning the repository:
     pip install -r requirements.txt
     ```
 
-4. Run the Flask app
+
+4. Run the app
     ```sh
-    python -m flask --app app.routes run
+    python run.py
     ```
 
 5. Access the app
