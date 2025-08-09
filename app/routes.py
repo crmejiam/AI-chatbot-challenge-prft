@@ -1,8 +1,11 @@
 
 
 from flask import Blueprint, request, jsonify
+
 import jwt
 import datetime
+import openai
+import os
 
 bp = Blueprint('routes', __name__)
 
@@ -24,11 +27,43 @@ def verify_jwt(request):
 
 # Story 1: Chat endpoint (protected)
 @bp.route('/chat/', methods=['POST'])
+
 def chat():
     payload = verify_jwt(request)
     if not payload:
         return jsonify({'error': 'Authentication required.'}), 401
-    return jsonify({'message': f"Chatbot response for {payload['email']} goes here."})
+
+    data = request.get_json()
+    user_message = data.get('message')
+    if not user_message:
+        return jsonify({'error': 'Message is required.'}), 400
+
+    # Get OpenAI API key from environment variable
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+    if not openai_api_key:
+        return jsonify({'error': 'OpenAI API key not configured.'}), 500
+    openai.api_key = openai_api_key
+
+    try:
+        response = openai.ChatCompletion.create(
+            model='gpt-3.5-turbo',  # Change to 'gpt-4' if you have access
+            messages=[
+                {"role": "system", "content": "You are a highly polite, customer-focused assistant. Always greet users warmly, answer with respect, and maintain a professional tone. Your main goal is to deliver excellent customer experience and provide accurate, specific information about GitHub Actions."},
+                {"role": "user", "content": user_message}
+            ]
+        )
+        reply = response.choices[0].message['content']
+        return jsonify({'response': reply})
+    except openai.error.RateLimitError:
+        return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
+    except openai.error.AuthenticationError:
+        return jsonify({'error': 'Invalid OpenAI API key.'}), 401
+    except openai.error.APIError as e:
+        return jsonify({'error': f'OpenAI API error: {str(e)}'}), 502
+    except openai.error.Timeout:
+        return jsonify({'error': 'OpenAI API request timed out. Please try again.'}), 504
+    except Exception as e:
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
 # Simple in-memory user store
