@@ -78,14 +78,20 @@ def test_list_users(client):
 def test_delete_user(client):
     reg = client.post('/users/register', json={'email': 'del@site.com', 'password': 'pass'})
     user_id = reg.get_json()['id']
-    response = client.delete(f'/admin/users/{user_id}')
+    # Login as admin
+    login = client.post('/users/login', json={'email': 'admin@site.com', 'password': 'adminpass'})
+    token = login.get_json()['token']
+    response = client.delete(f'/admin/users/{user_id}', headers={'Authorization': f'Bearer {token}'})
     assert response.status_code == 200
     data = response.get_json()
     assert 'message' in data
 
 # Test /admin/users/<user_id> (delete non-existent user)
 def test_delete_nonexistent_user(client):
-    response = client.delete('/admin/users/doesnotexist')
+    # Login as admin
+    login = client.post('/users/login', json={'email': 'admin@site.com', 'password': 'adminpass'})
+    token = login.get_json()['token']
+    response = client.delete('/admin/users/doesnotexist', headers={'Authorization': f'Bearer {token}'})
     assert response.status_code == 404
     data = response.get_json()
     assert 'error' in data
